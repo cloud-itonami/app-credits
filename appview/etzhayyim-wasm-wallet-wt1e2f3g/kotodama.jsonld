@@ -1,0 +1,75 @@
+{
+  "@context": "https://etzhayyim.com/ns/kotodama/v1",
+  "@id": "did:web:wallet.etzhayyim.com",
+  "component": {
+    "path": "src/app.ts"
+  },
+  "convoSystemPrompt": "You are etzhayyim-wasm-wallet agent. Ethereum wallet — GCC token balance queries, transfers, gas estimation, price feeds. Respond helpfully in the users language.",
+  "deploy": {},
+  "duties": [
+    "勤労の義務"
+  ],
+  "governance": {
+    "raci": "responsible",
+    "classification": "internal",
+    "complianceFrameworks": [
+      "anti-fraud"
+    ]
+  },
+  "kpi": [
+    "credits の獲得"
+  ],
+  "name": "etzhayyim-wasm-wallet",
+  "nanoid": "wt1e2f3g",
+  "performerType": "person",
+  "profile": {
+    "capabilities": [
+      "bpmn-dispatch",
+      "credit-ledger",
+      "reward-management"
+    ],
+    "description": "Ethereum wallet — GCC token balance queries, transfers, gas estimation, price feeds",
+    "displayName": "GCC Wallet"
+  },
+  "project": "credits",
+  "runtimeType": "worker",
+  "build": {
+    "role": "thin-edge",
+    "businessLogic": "40-engine/kotoba/crates/kotoba-kotodama/py/src/kotodama/ingest/credits.py",
+    "bpmn": "etzhayyim-root/00-contracts/bpmn/com/etzhayyim/credits"
+  },
+  "space": {
+    "channels": [
+      {
+        "default": true,
+        "description": "Wallet operations and balance updates",
+        "kind": "public",
+        "name": "wallet-feed"
+      }
+    ],
+    "description": "Ethereum wallet and GCC token operations",
+    "historyVisibility": "world-readable",
+    "joinRule": "public",
+    "name": "GCC Wallet"
+  },
+  "triggers": {
+    "http": {
+      "listen": "0.0.0.0:8080",
+      "routes": [
+        "/api/grpc/...",
+        "/health",
+        "/healthz"
+      ]
+    },
+    "subscribeRepos": {
+      "collections": [
+        "app.bsky.feed.post",
+        "app.bsky.feed.like",
+        "com.etzhayyim.apps.credits.creditsEntity",
+        "com.etzhayyim.apps.credits.creditsEvent",
+        "com.etzhayyim.apps.credits.creditsReport"
+      ]
+    }
+  },
+  "uiType": "yoro"
+}

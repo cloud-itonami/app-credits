@@ -1,0 +1,66 @@
+{
+  "@context": "https://etzhayyim.com/ns/kotodama/v1",
+  "@id": "did:web:credits.etzhayyim.com",
+  "accent": "#6366f1",
+  "component": {
+    "path": "src/app.ts"
+  },
+  "convoSystemPrompt": "You are credits mcp agent. Credits Mcp — AI Agent. Respond helpfully in the users language.",
+  "duties": [
+    "勤労の義務"
+  ],
+  "governance": {
+    "raci": "responsible",
+    "classification": "internal",
+    "complianceFrameworks": [
+      "anti-fraud"
+    ]
+  },
+  "kpi": [
+    "credits の獲得"
+  ],
+  "name": "credits-mcp-component",
+  "nanoid": "a5ce95af",
+  "performerType": "service",
+  "profile": {
+    "agentType": "autonomous",
+    "capabilities": [
+      "bpmn-dispatch",
+      "credit-ledger",
+      "reward-management"
+    ],
+    "description": "Credits Mcp — AI Agent",
+    "displayName": "Credits Mcp",
+    "isBot": true,
+    "operator": "etzhayyim.co.jp"
+  },
+  "project": "credits",
+  "runtimeType": "worker",
+  "build": {
+    "role": "thin-edge",
+    "businessLogic": "40-engine/kotoba/crates/kotoba-kotodama/py/src/kotodama/ingest/credits.py",
+    "bpmn": "etzhayyim-root/00-contracts/bpmn/com/etzhayyim/credits"
+  },
+  "space": {
+    "channels": [
+      {
+        "default": true,
+        "kind": "public",
+        "name": "5ce95af4-feed"
+      }
+    ],
+    "joinRule": "public",
+    "name": "Credits Mcp"
+  },
+  "triggers": {
+    "subscribeRepos": {
+      "collections": [
+        "app.bsky.feed.post",
+        "app.bsky.feed.like",
+        "app.bsky.feed.repost",
+        "app.bsky.graph.follow"
+      ]
+    }
+  },
+  "uiType": "appview"
+}

@@ -1,0 +1,57 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Project",
+  "name": "Etzhayyim Computing Credits (GCC)",
+  "identifier": "etzhayyim-project-credits",
+  "description": "ATP-like computing resource currency for the Etzhayyim Organism. Manages credit balances, purchase fee settlement, and public-fund routing for credit spend.",
+  "hasPart": [
+    {
+      "@type": "WebApplication",
+      "name": "Credits API",
+      "url": "https://credits.etzhayyim.com"
+    },
+    {
+      "@type": "WebApplication",
+      "name": "Credits Console",
+      "url": "https://credits.etzhayyim.com/",
+      "description": "Preview console for 30% purchase fee and 10% public-fund allocation routing."
+    }
+  ],
+  "rdfUnifiedDocuments": {
+    "@type": "Dataset",
+    "name": "Unified top-level RDF/JSON-LD documents",
+    "description": "Consolidated from project top-level *.jsonld files except PROJECT.jsonld.",
+    "documents": [
+      {
+        "fileName": "scheduler.jsonld",
+        "content": {
+          "@context": [
+            "https://schema.org/",
+            {
+              "etzhayyim": "https://etzhayyim.com/schemas/",
+              "capabilities": "etzhayyim:capabilities",
+              "survivalIndicators": "etzhayyim:survivalIndicators",
+              "scheduler": "etzhayyim:scheduler",
+              "milestones": "etzhayyim:milestones",
+              "blockers": "etzhayyim:blockers",
+              "dependsOn": {
+                "@id": "etzhayyim:dependsOn",
+                "@type": "@id"
+              },
+              "ingestKey": "etzhayyim:ingestKey",
+              "window": "etzhayyim:window",
+              "valueUpdatedAt": "etzhayyim:valueUpdatedAt"
+            }
+          ],
+          "@type": "CreativeWork",
+          "name": "Etzhayyim Computing Credits (GCC) Scheduler",
+          "identifier": "etzhayyim-project-credits/scheduler",
+          "description": "Project schedule (milestones) and blockers.",
+          "dateCreated": "2026-02-15T04:25:26+00:00",
+          "milestones": [],
+          "blockers": []
+        }
+      }
+    ]
+  }
+}
