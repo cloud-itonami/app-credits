@@ -1,1 +1,1 @@
-{:schema "etzhayyim.repository/readme-v1" :name "com-etzhayyim-app-credits" :kind :application :source "etzhayyim/root/60-apps/etzhayyim-project-credits"}
+{:schema "etzhayyim.repository/readme-v1" :name "app-credits" :kind :application :source "etzhayyim/root/60-apps/etzhayyim-project-credits"}
