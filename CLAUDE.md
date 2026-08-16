@@ -1,8 +1,22 @@
-> **DEPRECATED**: Actor migrated to `orgs/etzhayyim/com-etzhayyim-credits/actor-manifest.jsonld` (T1 MCP-Compose). This project wasm/*/src/app.ts is retained as T3 fallback only.
+> **DEPRECATED — everything below is the superseded design.** New value flows go
+> to **`orgs/cloud-itonami/credits`** (the ENGI mutual-credit kernel), whose
+> README states it "replaces the centrally issued GCC/credit model". The 30%
+> purchase fee, the admin minter and the Safe treasury described below are
+> legacy migration inputs, not the target design.
+>
+> The pointer here used to read `orgs/etzhayyim/com-etzhayyim-credits/…`. That
+> path does not exist and is not in `manifest/west.yml` — the repository moved
+> orgs, and only GitHub's name redirect kept it looking valid
+> (`gh api repos/etzhayyim/com-etzhayyim-credits --jq .full_name` →
+> `cloud-itonami/credits`). The appviews also live under `appview/`, not
+> `wasm/`, and neither of them currently deploys.
+>
+> **Start at `docs/operator-quickstart.md`** — it records what is here, what
+> runs, and what the hosts and contracts named below actually resolve to.
 
 # etzhayyim-project-credits — Credit Ledger & Public Fund Routing
 
-**URL**: `https://credits.etzhayyim.com`
+**URL**: `https://credits.etzhayyim.com` — ⚠ no A record as of 2026-08-16.
 
 ## Architecture
 
@@ -96,12 +110,11 @@ Credits は yoro.etzhayyim.com の human participation 課金システム。Earn
 
 ## Svelte Demo Console
 
-`wasm/credits-mcp-component/svelte` は policy / routing の preview 用 console。
-
-| Route | Method | 用途 |
-|---|---|---|
-| `/api/plans` | `GET` | purchase / allocation policy を返す |
-| `/api/balance/{userId}` | `GET` | demo balance を返す |
+⚠ **この console は存在しない。** `wasm/` というディレクトリは無く
+（`appview/credits-mcp-component/svelte`）、その SvelteKit app は route が 1 本
+（`src/routes/+page.svelte` → `src/App.svelte`）で `<h1>` を描画するだけである。
+`/api/plans` と `/api/balance/{userId}` は、この節と appview の README 以外の
+どのソースにも現れない（`grep -rl` で実測、2026-08-16）。
 
 ## Integration
 
