@@ -16,6 +16,25 @@ import {
 } from "../src/index.js";
 
 const OWNER = "did:web:credits.etzhayyim.com";
+const OUTSIDER = "did:web:outsider.example";
+
+/**
+ * Point the SAME substrate at a different reader.
+ *
+ * Read-cap tests used to construct `new MockEtzhayyim({ did: OUTSIDER })` and
+ * assert it saw nothing. That proved nothing: every MockEtzhayyim owns a
+ * private store, so the outsider instance had never observed the write at all.
+ * The assertion held for any implementation, including one that wrote every
+ * ledger entry in plaintext — measured by hardcoding
+ * `recipients: [OUTSIDER]` into recordEntry, which left the suite green.
+ *
+ * Flipping `did` on the instance that holds the records keeps the store and
+ * changes only who is asking, so a failure to enforce the read-cap now shows up
+ * as a failure here.
+ */
+function readAs(client: any, did: string): void {
+  client.did = did;
+}
 
 describe("credits kotoba", () => {
   let e: any;
@@ -74,9 +93,10 @@ describe("credits kotoba", () => {
 
     it("enforces read-cap: a non-recipient DID cannot decrypt ledger entries", async () => {
       await recordEntry(e, { entryId: "t1", userDid: "did:web:alice.example", type: "earn", amount: "100", balanceAfter: "100", source: "hc" });
-      const outsider: any = new MockEtzhayyim({ did: "did:web:outsider.example" });
-      expect((await listEntries(outsider)).total).toBe(0);
-      expect((await getBalance(outsider, { userDid: "did:web:alice.example" })).balance).toBe("0");
+      expect((await listEntries(e)).total).toBe(1);          // owner can, before the flip
+      readAs(e, OUTSIDER);
+      expect((await listEntries(e)).total).toBe(0);
+      expect((await getBalance(e, { userDid: "did:web:alice.example" })).balance).toBe("0");
     });
 
     it("grants read-cap to an explicit recipient", async () => {
@@ -84,6 +104,10 @@ describe("credits kotoba", () => {
       const r = await recordEntry(e, { entryId: "t1", userDid: "did:web:alice.example", type: "earn", amount: "5", balanceAfter: "5", source: "hc", recipients: [partner] });
       expect(r.status).toBe("recorded");
       expect((await listEntries(e)).total).toBe(1); // owner reads
+      readAs(e, partner);
+      expect((await listEntries(e)).total).toBe(1); // and so does the granted recipient
+      readAs(e, OUTSIDER);
+      expect((await listEntries(e)).total).toBe(0); // but nobody else
     });
   });
 
@@ -102,8 +126,9 @@ describe("credits kotoba", () => {
 
     it("enforces read-cap on preferences", async () => {
       await setPreference(e, { userDid: "did:web:alice.example", destinationId: "public-fund:common", title: "Common Fund", allocationBps: 1000 });
-      const outsider: any = new MockEtzhayyim({ did: "did:web:outsider.example" });
-      expect((await getPreference(outsider, { userDid: "did:web:alice.example" })).error).toBe("notFound");
+      expect((await getPreference(e, { userDid: "did:web:alice.example" })).preference?.destinationId).toBe("public-fund:common");
+      readAs(e, OUTSIDER);
+      expect((await getPreference(e, { userDid: "did:web:alice.example" })).error).toBe("notFound");
     });
   });
 
