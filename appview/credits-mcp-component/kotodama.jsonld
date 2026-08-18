@@ -3,7 +3,7 @@
   "@id": "did:web:credits.etzhayyim.com",
   "accent": "#6366f1",
   "component": {
-    "path": "src/app.ts"
+    "path": "../../src/credits/mcp_worker.cljs"
   },
   "convoSystemPrompt": "You are credits mcp agent. Credits Mcp — AI Agent. Respond helpfully in the users language.",
   "duties": [

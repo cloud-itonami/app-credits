@@ -1,0 +1,150 @@
+#!/usr/bin/env nbb
+;; smoke-worker — 実際にビルドされた **両方の** bundle を import して叩く。
+;;
+;; ここが「deploy される成果物」に触る唯一の検査である。テスト
+;; (test/credits/route_test.cljc) はソースの判断を固定するが、bundle が
+;; 本当に Worker の形で答えるかは言えない —— export の形、shadow の
+;; :advanced-optimization、`shadow.resource/inline` で焼いた CSS は、
+;; どれもビルドを通って初めて存在する。
+;;
+;; この repo は appview を 2 つ持つので bundle も 2 つある。**両方を叩く。**
+;; 片方だけ見ると、もう片方が古い bundle のままでも緑になる。
+;;
+;; Usage:  nbb scripts/smoke-worker.cljs [<root>]     (<root> FIRST, default ".")
+;; Exit:   0 全て期待どおり · 1 期待と違う · 2 判定できなかった（bundle が無い等）
+
+(require '["node:fs" :as fs] '["node:path" :as path] '["node:url" :as url]
+         '[clojure.string :as str])
+
+(def root (.resolve path (or (first (remove #(str/starts-with? % "--") *command-line-args*)) ".")))
+
+(def sentinel
+  "env の VALUE がページに出ていないことを確かめるための印。実在しそうな値
+  （\"yoro\" 等）だと二つの問題がある: 他の文言と偶然一致しうるし、引用符ごと
+  探すと renderer が \" を &quot; に escape するので**決して一致しない** ——
+  つまり検査が構造的に落ちなくなる。だから印を使う。
+  この印は APP_UI_TYPE に載せる —— ページが **キー名だけ** を出すと言っている var。"
+  "SENTINEL-9f3a2c")
+
+(def shown
+  "**出ていなければならない** 値。見出しは APP_DISPLAY_NAME の値そのもので、
+  ページに焼いた文字列ではない。印を 1 つしか置かないと『全部隠す』実装も
+  『全部出す』実装も通ってしまうので、隠す印(sentinel)と出す印(shown)を
+  **別々の var に** 載せて両方見る。"
+  "SHOWN-4b71e-DisplayName")
+
+(def router-url
+  "中継先は **値そのもの** がページに出る（wallet のみ）。ここを .invalid
+  （RFC 2606 で必ず解決しない TLD）にしておくと、出ていることを実 DNS に
+  依存せず確かめられる。"
+  "https://mcp.example.invalid/xrpc/probe")
+
+(def env #js {"APP_DISPLAY_NAME" shown
+              "APP_NANOID" "a5ce95af"
+              "APP_UI_TYPE" sentinel
+              "AGENTGATEWAY_MCP_ROUTER_URL" router-url})
+
+(def apps
+  "bundle ごとの期待。XRPC を持つのは wallet だけで、credits-mcp-component の
+  deploy 面には server route が無かった —— だから /xrpc/* は 404 を期待する。"
+  [{:id "credits" :bundle "dist/credits/worker.js" :name "credits-mcp-component"
+    :xrpc? false :routes ["/" "/health"]}
+   {:id "wallet" :bundle "dist/wallet/worker.js" :name "etzhayyim-wasm-wallet-wt1e2f3g"
+    :xrpc? true :routes ["/" "/health" "/xrpc/:nsid"]}])
+
+(def failures (atom []))
+(defn check! [label expected actual]
+  (let [ok (= expected actual)]
+    (println (str (if ok "PASS" "FAIL") "\t" label "\texpected=" (pr-str expected) "\tactual=" (pr-str actual)))
+    (when-not ok (swap! failures conj label))))
+
+;; bundle が 1 つでも無ければ「判定できなかった」。0 でも 1 でもない値で終わる。
+(let [missing (remove #(.existsSync fs (.resolve path root (:bundle %))) apps)]
+  (when (seq missing)
+    (doseq [m missing] (println (str "UNDETERMINED\tno bundle at " (:bundle m))))
+    (println "Refusing to report a pass: build it first (see docs/operator-quickstart.md S5).")
+    (js/process.exit 2)))
+
+(defn- call [h method path]
+  (let [req (js/Request. (str "https://credits.etzhayyim.com" path) #js {:method method})]
+    (-> (js/Promise.resolve ((.-fetch h) req env #js {}))
+        (.then (fn [res] (-> (.text res)
+                             (.then (fn [body] {:status (.-status res)
+                                                :ct (.get (.-headers res) "content-type")
+                                                :body body}))))))))
+
+(defn- exercise [{:keys [id bundle name xrpc? routes]}]
+  (-> (js/import (.-href (.pathToFileURL url (.resolve path root bundle))))
+      (.then
+       (fn [m]
+         (let [h (.-default m)]
+           (check! (str id " default export has fetch") true (fn? (.-fetch h)))
+           (-> (js/Promise.all
+                #js [(call h "GET" "/") (call h "GET" "/health")
+                     (call h "POST" "/xrpc/") (call h "OPTIONS" "/xrpc/x")
+                     (call h "GET" "/nope") (call h "POST" "/health")])
+               (.then
+                (fn [[page health bad pre nf mna]]
+                  (check! (str id " GET / status") 200 (:status page))
+                  (check! (str id " GET / is html") true (str/includes? (or (:ct page) "") "text/html"))
+                  ;; ページは route 表から描かれる。表にある path が全部出ていること。
+                  (doseq [p routes]
+                    (check! (str id " page advertises " p) true (str/includes? (:body page) p)))
+                  ;; 件数も焼かれていない。route 表から導出されていること。
+                  (check! (str id " page states the route count from the table") true
+                          (str/includes? (:body page) (str "公開ルート " (count routes) " 本")))
+                  ;; env のキーは出す
+                  (check! (str id " page shows a var key") true (str/includes? (:body page) "APP_NANOID"))
+                  ;; 表示する値と表示しない値を **別々の印で** 見る。片方だけだと
+                  ;; 「全部隠す」実装も「全部出す」実装も通ってしまう。
+                  (check! (str id " page hides other var values") false (str/includes? (:body page) sentinel))
+                  ;; **見出しの中に** 在ることを見る。文書のどこかに在ることではない。
+                  ;; 実測 2026-08-18: 見出しを baked 定数に戻す mutation が、この検査を
+                  ;; **緑のまま通した** —— 同じ値が <title> にも出るので、「どこかに在る」
+                  ;; では見出しが引数から描かれていることを言えていなかった。
+                  ;; mutation が checker の弱点を見つけた例なので、checker の方を直した。
+                  (check! (str id " page shows the value in the heading it renders") true
+                          (str/includes? (:body page) (str "data-size=\"45\">" shown "</h1>")))
+                  (check! (str id " page shows the value it says it shows") true (str/includes? (:body page) shown))
+                  ;; DDS の CSS が bundle に焼かれている。
+                  ;; **2 つに割る。** 「dads-table が在る」だけでは落ちない検査になる ——
+                  ;; それは view が出力する markup であって、CSS が 1 バイトも
+                  ;; 入っていないページにも現れる（実測: css 込み / css 無しで
+                  ;; dads-table は 0 にならない）。`--color-primitive-blue` は
+                  ;; stylesheet にしか無いので 0 になる。
+                  ;; 前者は「view がライブラリを呼んだ」、後者は「stylesheet が
+                  ;; 実際に入った」——別の主張なので別の検査にする。
+                  (check! (str id " page uses the design system components") true
+                          (str/includes? (:body page) "class=\"dads-table\""))
+                  (check! (str id " page carries the stylesheet itself") true
+                          (str/includes? (:body page) "--color-primitive-blue"))
+                  (check! (str id " GET /health status") 200 (:status health))
+                  (check! (str id " health names itself") true (str/includes? (:body health) name))
+                  (if xrpc?
+                    (do
+                      ;; nsid 無しの XRPC は 400。前方一致で素通ししない
+                      (check! (str id " POST /xrpc/ status") 400 (:status bad))
+                      (check! (str id " OPTIONS preflight") 204 (:status pre))
+                      (check! (str id " page shows the relay target it uses") true
+                              (str/includes? (:body page) router-url)))
+                    (do
+                      ;; この app に XRPC は無い。405/400 ではなく 404。
+                      (check! (str id " POST /xrpc/ is not found") 404 (:status bad))
+                      (check! (str id " OPTIONS /xrpc/x is not found") 404 (:status pre))
+                      (check! (str id " page shows no relay target") false
+                              (str/includes? (:body page) router-url))))
+                  (check! (str id " unknown path") 404 (:status nf))
+                  (check! (str id " wrong method") 405 (:status mna))
+                  true))))))))
+
+(-> (reduce (fn [p a] (.then p (fn [_] (exercise a)))) (js/Promise.resolve nil) apps)
+    (.then (fn [_]
+             (let [f @failures]
+               (if (seq f)
+                 (do (println (str "FAILED\t" (count f) " check(s): " (str/join ", " f)))
+                     (js/process.exit 1))
+                 (do (println "OK\tboth built bundles answer as their route tables say")
+                     (js/process.exit 0))))))
+    (.catch (fn [e]
+              (println (str "UNDETERMINED\tcould not exercise the bundles: " (.-message e)))
+              (js/process.exit 2))))

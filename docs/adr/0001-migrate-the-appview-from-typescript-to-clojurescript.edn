@@ -1,0 +1,158 @@
+[{:db/id -1
+  :adr/id "app-credits-0001"
+  :adr/title "2 つの appview を TypeScript/Svelte から ClojureScript へ移す"
+  :adr/status "accepted"
+  :adr/date "2026-08-18"
+  :adr/doc_type "adr"
+  :adr/source-format "edn"
+  :adr/body "
+# ADR-0001: 2 つの appview を TypeScript/Svelte から ClojureScript へ移す
+
+**Status**: accepted / **Date**: 2026-08-18 / **Deciders**: Jun Kawasaki
+
+## Context
+
+この repo は appview を **2 つ** 持つ（`credits-mcp-component` と
+`etzhayyim-wasm-wallet-wt1e2f3g`）。移行前、両方に同じ 3 つの欠陥があった。
+すべて 2026-08-18 に commit bb4f922 に対して実測した。
+
+1. **deploy される handler と、読み手が開くファイルが別だった。**
+   両方の `wrangler.jsonc` の `main` は
+   `svelte/.svelte-kit/cloudflare/_worker.js` を指す。これは SvelteKit の
+   ビルド成果物で、**この tree に commit されていない**（`find . -name .svelte-kit`
+   が 0 件）。一方 `appview/*/src/app.ts` は読むと application に見えるが、
+   どの `package.json` の entry でもなく、どの bundle にも入らない。
+
+2. **公開ページが隣の設定と矛盾していた。** wallet の
+   `svelte/src/routes/+page.svelte` は
+
+       \"routeCount\": 0, \"routes\": [], \"vars\": []
+
+   を literal で持ち、`Routes 0` と `No public route is declared` を描画して
+   いた。同じディレクトリの `wrangler.jsonc` は route 1 本と var 8 個を宣言
+   している。ページが自分の設定を読んでいなかった。
+
+3. **どちらの Worker もこの tree からはビルドできない。**
+   `credits-mcp-component/svelte/package.json` は
+   `@etzhayyim/design-system: workspace:*` に依存するが、この repo に
+   pnpm workspace root は無い。
+
+さらに、移行の可否に関わる事実として: この Worker が route するホストと、
+中継先のホストは **いずれも DNS に無い**（2026-08-18 実測）。
+
+    credits.etzhayyim.com    A なし
+    a5ce95af.etzhayyim.com   A なし
+    wt1e2f3g.etzhayyim.com   A なし
+    mcp.etzhayyim.com        A なし   (wallet の XRPC 中継先)
+    dispatcher.etzhayyim.com A なし   (src/app.ts の中継先)
+    etzhayyim.com            104.21.51.111 / 172.67.179.128 （zone は生きている）
+
+## Decision
+
+**2 つの appview を ClojureScript に移し、appview の TypeScript と Svelte を
+撤去する。**
+
+    src/credits/route.cljc        判断（どの handler が答えるか、app ごとの route 表）
+    src/credits/view.cljc         ページ（jp-go-dds の hiccup）
+    src/credits/edge.cljs         Request/Response に触る共通部
+    src/credits/mcp_worker.cljs   credits-mcp-component の entry
+    src/credits/wallet_worker.cljs wallet の entry
+            ↓ shadow-cljs :target :esm（build を 2 本）
+    dist/credits/worker.js        credits-mcp-component の main が指すもの
+    dist/wallet/worker.js         wallet の main が指すもの
+
+TypeScript を正本にしない理由は superproject CLAUDE.md の runtime 順序
+（kotoba wasm > clojurewasm > ClojureScript > nbb）で、TypeScript はそこに
+無い。入口を `.kotoba` ではなく cljs に置くのは ADR-2606290000 の判断で、
+kotoba の ingress capability が `:native-aot` / `:wasm-aot` とも pending だから
+である。判断を `.cljc` に切り出してあるのは、ブラウザもビルドも無しにテスト
+するためであり、ingress が qualify した時に最初に `.kotoba` へ移る部分だから
+でもある。
+
+先例は同じ org の `cloud-itonami-marketplace-listing`
+（`src/listingops/*.cljc` → shadow-cljs :esm → `dist/worker.js`）と、同型の
+移行 `cloud-itonami/app-ongakuka`。
+
+### これで消えた欠陥
+
+- (1) は構造的に消えた。各 `main` が指す bundle は `src/` からコンパイルされる。
+- (2) も構造的に消えた。ページは route 表を **引数で受け取って** 描き、件数も
+  `(count routes)` で導出する。表示と実際に答えるものが同じ 1 つの値から出る。
+  見出し・説明・nanoid も env の値であって、ページに焼いた文字列ではない。
+- (3) は消えた。依存は `deps.edn` に宣言され、bundle は再現可能にビルドできる。
+
+### 2 つの app は route 表を共有しない
+
+`credits-mcp-component` の deploy 面には server route が 1 本も無かった
+（SvelteKit の route は `+page.svelte` 1 枚）。wallet だけが
+`xrpc/[...path]/+server.ts` を持っていた。したがって:
+
+| | `/` | `/health` | `/xrpc/:nsid` |
+|---|---|---|---|
+| credits-mcp-component | ✅ | ✅ (新規) | **無い** → 404 |
+| wallet | ✅ | ✅ (新規) | ✅ POST + OPTIONS |
+
+XRPC を持たない app に `/xrpc/...` が来たら 404 を返す。405 や 400 だと
+『あるがいまは使えない』に読めてしまうため。
+
+### 多段の XRPC パスは絞らない
+
+移行前の SvelteKit route は rest parameter `[...path]` で受けており、
+`/xrpc/a/b` をそのまま tool 名として転送していた。1 セグメントに絞ると
+挙動が変わる —— **それは移行ではなく方針変更**なので、この commit には
+入れない。`wrangler dev --local` で実測: `/xrpc/a/b` は 502（上流に届かない）
+であって 400 ではない。
+
+### 持ち越さなかった経路（黙って消していない）
+
+- **`appview/*/src/app.ts` の全経路**（`/_app/meta`、`/healthz`、
+  `/xrpc/com.etzhayyim.apps.credits.*` の dispatcher 中継、wallet の
+  `WALLET_TO_CREDITS` NSID 写像と wallet 固有 NSID の 501）。理由は 3 つ重なる:
+  ①どの bundle にも入っていない（`main` は SvelteKit を指す）
+  ②`DISPATCHER_URL` / `DISPATCHER_INTERNAL_SECRET` は**どちらの
+  `wrangler.jsonc` にも宣言が無い** ③宛先 `dispatcher.etzhayyim.com` は
+  A レコードを持たない。動かない経路を移植して『移行済み』と言わないため。
+- **`assets` block（SPA fallback と静的配信）**。指していた
+  `svelte/.svelte-kit/cloudflare/client` はこの tree に無く、Svelte を撤去した
+  今は生成もされない。
+
+### `/health` は移行ではなく追加である
+
+両 app の `/health` は、deploy されていた SvelteKit の面には無かった
+（`src/app.ts` の方にはあった）。**これは 1 つだけの新規追加**で、deploy された
+面が答えることを外から確かめられるようにするために入れた。上流も binding も
+要らないので、持ち越さなかった経路の理由（②③）はここには当たらない。
+
+### `nodejs_compat` / `nodejs_als` を外した
+
+adapter-cloudflare の要求だった。cljs bundle は `node:` builtin を 1 つも
+import せず（実測: bundle 内 `node:` 0 件、`require(` 0 件、`process.` 0 件、
+`Buffer` 0 件）、Web 標準 API だけを使う。**`wrangler dev --local` で
+2 つとも起動し、全ルートを叩いて確認した**（`docs/operator-quickstart.md` S7）。
+
+## この移行の対象外（削っていない）
+
+- **`kotoba/`** — 7 ファイル、TypeScript 594 行 + テスト 153 行、vitest 8 tests。
+  appview の bundle に入っておらず、置き換えた対象から import もされていない
+  （`@etzhayyim/sdk` への依存は `import type` のみ）。**これは appview ではない
+  ので、この移行の対象ではない。** 拡張子が同じというだけで消すのは移行では
+  なく破壊である。`scripts/verify-docs-claims.cljs` がファイル数を両方向に
+  pin してあるので、黙って増えることも減ることもできない。
+- **`evm/`** — 45 ファイル（`.sol` 42）。自作 1 本 + Circle の USDC を verbatim
+  で vendor したもの。同上。
+
+これらを Kotoba/cljs へ移すかは**別の決定**で、その時は依存先（`@etzhayyim/sdk`）
+の cljs 面が要る。
+
+## Consequences
+
+- appview の TypeScript は 6 ファイル → **0**。Svelte 成果物 → **0**。
+- 公開ページは deploy される bundle が返す HTML そのもので、design-quality
+  100.00 / 12 軸（`--extra-axes` 込み）。
+- **この Worker は依然として deploy できない** —— route が指す 3 つのホストも、
+  XRPC の中継先も DNS に無い。移行はそれを直さない。直し方は
+  `docs/operator-quickstart.md` S8。
+- 新しい値の流れは `orgs/cloud-itonami/credits`（ENGI）へ行くべきで、ここでは
+  ない。この移行は「動いていない面を、読める・検査できる形にした」ものであって、
+  この repo を live に戻したものではない。
+"}]
