@@ -2,7 +2,7 @@
   "@context": "https://etzhayyim.com/ns/kotodama/v1",
   "@id": "did:web:wallet.etzhayyim.com",
   "component": {
-    "path": "src/app.ts"
+    "path": "../../src/credits/wallet_worker.cljs"
   },
   "convoSystemPrompt": "You are etzhayyim-wasm-wallet agent. Ethereum wallet — GCC token balance queries, transfers, gas estimation, price feeds. Respond helpfully in the users language.",
   "deploy": {},

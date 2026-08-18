@@ -13,6 +13,11 @@
 >
 > **Start at `docs/operator-quickstart.md`** — it records what is here, what
 > runs, and what the hosts and contracts named below actually resolve to.
+>
+> 2026-08-18: 2 つの appview を TypeScript/Svelte から **ClojureScript** へ
+> 移した（`docs/adr/0001`、`README.md`）。下の legacy 設計の記述は当時の
+> 設計記録として残してあるが、**runtime の記述は下の「Appview runtime」節が
+> 正本**である。
 
 # etzhayyim-project-credits — Credit Ledger & Public Fund Routing
 
@@ -108,13 +113,30 @@ Credits は yoro.etzhayyim.com の human participation 課金システム。Earn
 | HC reputation gate | `approval_rate < 50%` |
 | Duplicate reward | 同一 task/session を拒否 |
 
-## Svelte Demo Console
+## Appview runtime — ClojureScript（2026-08-18 移行）
 
-⚠ **この console は存在しない。** `wasm/` というディレクトリは無く
-（`appview/credits-mcp-component/svelte`）、その SvelteKit app は route が 1 本
-（`src/routes/+page.svelte` → `src/App.svelte`）で `<h1>` を描画するだけである。
-`/api/plans` と `/api/balance/{userId}` は、この節と appview の README 以外の
-どのソースにも現れない（`grep -rl` で実測、2026-08-16）。
+**この節は以前「Svelte Demo Console」だった。その console はもう存在しない。**
+
+2 つの appview は TypeScript/Svelte から ClojureScript へ移行済み
+（`docs/adr/0001`）。deploy される bundle は、いま読めるソースから
+**shadow-cljs** がコンパイルしたものである。
+
+| appview | wrangler `main` | entry |
+|---|---|---|
+| `appview/credits-mcp-component` | `../../dist/credits/worker.js` | `src/credits/mcp_worker.cljs` |
+| `appview/etzhayyim-wasm-wallet-wt1e2f3g` | `../../dist/wallet/worker.js` | `src/credits/wallet_worker.cljs` |
+
+判断は `src/credits/route.cljc`、ページは `src/credits/view.cljc`（jp-go-dds）、
+Request/Response に触るのは `src/credits/edge.cljs` と 2 つの entry だけ。
+
+移行前にここに書かれていた `/api/plans`・`/api/balance/{userId}` は、この repo の
+どのソースにも存在しなかった（`grep -rl` で実測、2026-08-16／2026-08-18 に再確認）。
+新しい面が答えるルートは `README.md` の表が正本で、その表は Worker の route 表
+そのものから描かれている。
+
+⚠ **`kotoba/` と `evm/` はこの移行の対象外**。どちらも appview の bundle に
+入っておらず、置き換えた対象から参照もされていない。削っていない理由と実測は
+`README.md`。
 
 ## Integration
 

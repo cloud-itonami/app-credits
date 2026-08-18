@@ -1,0 +1,210 @@
+#!/usr/bin/env nbb
+;; verify-docs-claims — re-derive every number README.md and
+;; docs/operator-quickstart.md state, from the tree itself, and fail when the
+;; tree and the prose disagree.
+;;
+;; Before the cljs migration this file's load-bearing claim was a GAP: the
+;; Workers that would be deployed were SvelteKit build outputs (not committed
+;; anywhere) while appview/*/src/app.ts -- the files that read like the
+;; application -- were in no bundle. That gap is closed, so the claims now
+;; assert the CLOSURE, and they are written so it cannot quietly come back:
+;; the appview TypeScript is asserted ABSENT BY NAME, not merely absent from a
+;; byte total.
+;;
+;; It also pins the two trees this migration deliberately did NOT touch
+;; (kotoba/, evm/) by file count, so "we migrated the appview" cannot silently
+;; become "we also rewrote/deleted the parts nobody asked about".
+;;
+;; Usage:  nbb scripts/verify-docs-claims.cljs [<dir>]     (<dir> FIRST, default ".")
+;; Exit:   0 every claim holds · 1 a claim is false · 2 could not answer
+
+(require '["node:fs" :as fs]
+         '["node:child_process" :as cp]
+         '[clojure.string :as str]
+         '[cljs.reader :as reader])
+
+(def root (or (first (remove #(str/starts-with? % "--") *command-line-args*)) "."))
+
+(def CREDITS "appview/credits-mcp-component")
+(def WALLET "appview/etzhayyim-wasm-wallet-wt1e2f3g")
+
+(def claims
+  {:tracked-files 81
+   :appview-ts-files 0            ; both src/app.ts and every svelte/*.ts are gone
+   :svelte-artifacts 0            ; no .svelte / svelte.config / svelte/ dir survives
+   :production-cljs-files 6       ; src/credits/*.clj{s,c} + test/credits/*.cljc
+   ;; Deliberately untouched by this migration (README.md S "left alone").
+   ;; Pinned so they cannot grow or shrink without this check noticing.
+   :kotoba-files 7
+   :kotoba-ts-files 5
+   :evm-files 45
+   :evm-sol-files 42
+   ;; per-app config
+   :credits-main "../../dist/credits/worker.js"
+   :credits-vars 9
+   :credits-routes 2
+   :wallet-main "../../dist/wallet/worker.js"
+   :wallet-vars 8
+   :wallet-routes 1})
+
+;; What the migration REMOVED, by name. A byte total cannot say "the appview
+;; TypeScript is gone"; this can, and it fails if any of it comes back.
+(def removed-by-migration
+  [(str CREDITS "/src/app.ts")
+   (str CREDITS "/svelte/package.json")
+   (str CREDITS "/svelte/pnpm-lock.yaml")
+   (str CREDITS "/svelte/postcss.config.js")
+   (str CREDITS "/svelte/tailwind.config.js")
+   (str CREDITS "/svelte/src/app.html")
+   (str CREDITS "/svelte/src/App.svelte")
+   (str CREDITS "/svelte/src/routes/+page.svelte")
+   (str CREDITS "/svelte/src/svelte.d.ts")
+   (str CREDITS "/svelte/svelte.config.js")
+   (str CREDITS "/svelte/tsconfig.json")
+   (str CREDITS "/svelte/vite.config.ts")
+   (str WALLET "/src/app.ts")
+   (str WALLET "/svelte/package.json")
+   (str WALLET "/svelte/src/app.html")
+   (str WALLET "/svelte/src/routes/+page.svelte")
+   (str WALLET "/svelte/src/routes/xrpc/[...path]/+server.ts")
+   (str WALLET "/svelte/svelte.config.js")
+   (str WALLET "/svelte/tsconfig.json")
+   (str WALLET "/svelte/vite.config.ts")])
+
+(def undetermined (atom []))
+(def failures (atom []))
+(defn undet! [m] (swap! undetermined conj m))
+
+(defn tracked-files []
+  (try (->> (.execSync cp "git ls-files" #js {:cwd root :encoding "utf8"})
+            str/split-lines (remove str/blank?) vec)
+       (catch :default e (undet! (str "git ls-files failed: " (.-message e))) nil)))
+(defn slurp* [rel] (try (.readFileSync fs (str root "/" rel) "utf8") (catch :default _ nil)))
+(defn exists? [rel] (try (.existsSync fs (str root "/" rel)) (catch :default _ false)))
+(defn strip-jsonc [s] (str/replace s #"(?m)^\s*//.*$" ""))
+
+(defn check! [label expected actual]
+  (let [ok (= expected actual)]
+    (println (str (if ok "PASS" "FAIL") "\t" (name label)
+                  "\texpected=" (pr-str expected) "\tactual=" (pr-str actual)))
+    (when-not ok (swap! failures conj label))
+    ok))
+
+(let [files (tracked-files)]
+  (when (nil? files) (println "UNDETERMINED\tcould not list tracked files") (js/process.exit 2))
+  (println (str "SCANNED\t" (count files)))
+  (when (zero? (count files)) (println "UNDETERMINED\tscanned 0 files") (js/process.exit 2))
+
+  (check! :tracked-files (:tracked-files claims) (count files))
+
+  ;; --- the appview TypeScript is gone, by name and by pattern ----------------
+  (check! :removed-by-migration-absent []
+          (vec (filter exists? removed-by-migration)))
+  (check! :appview-ts-files (:appview-ts-files claims)
+          (count (filter #(and (str/starts-with? % "appview/") (str/ends-with? % ".ts")) files)))
+  (check! :svelte-artifacts (:svelte-artifacts claims)
+          (count (filter #(or (str/ends-with? % ".svelte")
+                              (str/includes? % "svelte.config")
+                              (str/includes? % "/svelte/"))
+                         files)))
+  (check! :production-cljs-files (:production-cljs-files claims)
+          (count (filter #(and (not (str/starts-with? % "scripts/"))
+                               (re-find #"\.(cljs|cljc|clj|kotoba)$" %))
+                         files)))
+
+  ;; --- what this migration deliberately did NOT touch ------------------------
+  ;; kotoba/ is a standalone TypeScript package with its own package.json and
+  ;; vitest suite. It is in no bundle here and is referenced by nothing the
+  ;; migration replaced, so it is not dead and was not deleted. Pinned by count
+  ;; in both directions: deleting it fails this, and growing it fails it too.
+  (check! :kotoba-files (:kotoba-files claims)
+          (count (filter #(str/starts-with? % "kotoba/") files)))
+  (check! :kotoba-ts-files (:kotoba-ts-files claims)
+          (count (filter #(and (str/starts-with? % "kotoba/") (str/ends-with? % ".ts")) files)))
+  (check! :kotoba-entrypoint-present true (exists? "kotoba/src/index.ts"))
+  (check! :evm-files (:evm-files claims)
+          (count (filter #(str/starts-with? % "evm/") files)))
+  (check! :evm-sol-files (:evm-sol-files claims)
+          (count (filter #(and (str/starts-with? % "evm/") (str/ends-with? % ".sol")) files)))
+
+  ;; --- each wrangler.jsonc points at ITS bundle ------------------------------
+  (doseq [[label dir main-k vars-k routes-k]
+          [[:credits CREDITS :credits-main :credits-vars :credits-routes]
+           [:wallet WALLET :wallet-main :wallet-vars :wallet-routes]]]
+    (if-let [w (some-> (slurp* (str dir "/wrangler.jsonc")) strip-jsonc)]
+      (let [j (js->clj (.parse js/JSON w) :keywordize-keys false)]
+        (check! (keyword (str (name label) "-main")) (get claims main-k) (get j "main"))
+        (check! (keyword (str (name label) "-vars")) (get claims vars-k) (count (get j "vars")))
+        (check! (keyword (str (name label) "-routes")) (get claims routes-k) (count (get j "routes")))
+        ;; the old config served a SvelteKit client dir that no longer exists
+        (check! (keyword (str (name label) "-no-assets-binding")) true (nil? (get j "assets")))
+        ;; nodejs_compat / nodejs_als were adapter-cloudflare's. Verified removed
+        ;; against `wrangler dev --local` (docs/operator-quickstart.md S7).
+        (check! (keyword (str (name label) "-no-sveltekit-compat-flags")) 0
+                (count (filter #{"nodejs_compat" "nodejs_als"}
+                               (or (get j "compatibility_flags") []))))
+        ;; APP_FRAMEWORK named SvelteKit before the migration
+        (check! (keyword (str (name label) "-framework")) "cljs-esm-worker"
+                (get-in j ["vars" "APP_FRAMEWORK"])))
+      (undet! (str dir "/wrangler.jsonc unreadable"))))
+
+  ;; --- the build is configured so a warning cannot ship ----------------------
+  ;; Read as EDN, BY PATH. Grepping for ":warnings-as-errors" would be satisfied
+  ;; by the comment in shadow-cljs.edn that explains this very hazard -- and by
+  ;; the key sitting under :build-options, where shadow ignores it silently.
+  ;; That misplacement is itself a check that cannot fail, so the check has to
+  ;; look where shadow looks: [:builds <id> :compiler-options :warnings-as-errors].
+  (if-let [sh (slurp* "shadow-cljs.edn")]
+    (let [edn (try (reader/read-string sh) (catch :default e (undet! (str "shadow-cljs.edn unreadable as EDN: " (.-message e))) nil))]
+      (when edn
+        (doseq [b [:credits-worker :wallet-worker]]
+          (check! (keyword (str "warnings-as-errors-" (name b))) true
+                  (get-in edn [:builds b :compiler-options :warnings-as-errors]))
+          (check! (keyword (str "no-misplaced-warnings-key-" (name b))) nil
+                  (get-in edn [:builds b :build-options :warnings-as-errors])))
+        (check! :shadow-output-dirs ["dist/credits" "dist/wallet"]
+                [(get-in edn [:builds :credits-worker :output-dir])
+                 (get-in edn [:builds :wallet-worker :output-dir])])
+        (check! :shadow-exports ['credits.mcp-worker/handler 'credits.wallet-worker/handler]
+                [(get-in edn [:builds :credits-worker :modules :worker :exports 'default])
+                 (get-in edn [:builds :wallet-worker :modules :worker :exports 'default])])))
+    (undet! "shadow-cljs.edn unreadable"))
+
+  ;; --- CLAUDE.md no longer describes a SvelteKit/TypeScript runtime ---------
+  (if-let [c (slurp* "CLAUDE.md")]
+    (check! :claude-md-describes-cljs true
+            (and (not (str/includes? c "sveltekit-edge-bff"))
+                 (str/includes? c "shadow-cljs")))
+    (undet! "CLAUDE.md unreadable"))
+
+  ;; --- the page renders the route TABLE rather than a baked count -----------
+  ;; Asserted structurally (the view takes :routes and derives the count, the
+  ;; workers pass the real table) and NOT by forbidding a substring: forbidding
+  ;; "routeCount" anywhere would be tripped by the docstrings that explain the
+  ;; old defect. A check a comment can fail is a check about prose.
+  (let [v (slurp* "src/credits/view.cljc")
+        e (slurp* "src/credits/edge.cljs")]
+    (if (or (nil? v) (nil? e))
+      (undet! "view.cljc or edge.cljs unreadable")
+      (check! :page-renders-route-table true
+              (and (str/includes? v "(route-rows routes)")
+                   (str/includes? v "(count routes)")
+                   (str/includes? e ":routes (:app/routes app)")))))
+
+  ;; --- the two apps do not share one route table ----------------------------
+  (if-let [r (slurp* "src/credits/route.cljc")]
+    (check! :two-distinct-apps true
+            (and (str/includes? r "(def credits-app")
+                 (str/includes? r "(def wallet-app")
+                 (str/includes? r ":app/xrpc? false")
+                 (str/includes? r ":app/xrpc? true")))
+    (undet! "route.cljc unreadable")))
+
+(let [u @undetermined f @failures]
+  (when (seq u)
+    (doseq [m u] (println (str "UNDETERMINED\t" m)))
+    (println "Refusing to report a pass: the tree could not be read completely.")
+    (js/process.exit 2))
+  (if (seq f)
+    (do (println (str "FAILED\t" (count f) " claim(s): " (str/join ", " (map name f)))) (js/process.exit 1))
+    (do (println "OK\tevery claim in README.md and docs/operator-quickstart.md holds") (js/process.exit 0))))

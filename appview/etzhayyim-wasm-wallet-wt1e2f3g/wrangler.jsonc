@@ -1,16 +1,20 @@
 {
   "name": "kotodama-wt1e2f3g",
-  "main": "svelte/.svelte-kit/cloudflare/_worker.js",
+  // Compiled from src/credits/wallet_worker.cljs by shadow-cljs (:target :esm,
+  // build :wallet-worker). Before the cljs migration this pointed at a
+  // SvelteKit build output that is not committed anywhere in this tree --
+  // see docs/adr/0001.
+  "main": "../../dist/wallet/worker.js",
   "compatibility_date": "2025-03-17",
-  "compatibility_flags": [
-    "nodejs_compat",
-    "nodejs_als"
-  ],
+  // nodejs_compat / nodejs_als were adapter-cloudflare's requirement. The cljs
+  // bundle imports no node: builtin and uses only Web-standard APIs
+  // (Request/Response/URL/fetch/crypto.randomUUID/JSON/Object). Verified: see
+  // docs/operator-quickstart.md S7.
   "vars": {
     "APP_CAPABILITIES": "[\"bpmn-dispatch\",\"credit-ledger\",\"reward-management\"]",
     "APP_DESCRIPTION": "GCC Wallet — thin edge facade for BPMN credit ledger operations",
     "APP_DISPLAY_NAME": "GCC Wallet",
-    "APP_FRAMEWORK": "sveltekit-edge-bff",
+    "APP_FRAMEWORK": "cljs-esm-worker",
     "APP_NANOID": "wt1e2f3g",
     "APP_PERFORMER_TYPE": "person",
     "APP_UI_TYPE": "yoro",
@@ -21,11 +25,5 @@
       "pattern": "wt1e2f3g.etzhayyim.com/*",
       "zone_name": "etzhayyim.com"
     }
-  ],
-  "assets": {
-    "directory": "./svelte/.svelte-kit/cloudflare/client",
-    "binding": "ASSETS",
-    "html_handling": "auto-trailing-slash",
-    "not_found_handling": "none"
-  }
+  ]
 }

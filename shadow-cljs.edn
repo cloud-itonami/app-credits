@@ -1,0 +1,40 @@
+;; The two app-credits appview Workers. :esm, mirroring
+;; cloud-itonami-marketplace-listing, gftdcojp/nexus-x402 and the sibling
+;; migration in cloud-itonami/app-ongakuka.
+;;
+;; This repo has TWO appviews, not one, so there are two builds and two
+;; bundles. Each wrangler.jsonc's main points at ITS bundle, compiled from the
+;; source in src/. That is the whole point of the migration recorded in
+;; docs/adr/0001: before it, BOTH mains pointed at a SvelteKit build output
+;; that is not committed anywhere in this tree, and the TypeScript a reader
+;; opens (appview/*/src/app.ts) was in no bundle at all.
+;;
+;; :warnings-as-errors is not decoration. shadow treats an undeclared or renamed
+;; var as a WARNING, so `shadow-cljs release` exits 0 while writing a bundle
+;; that throws `Cannot read properties of undefined` on the first request.
+;; "The build succeeded" is therefore not a check at all -- it cannot fail.
+;; Demonstrated in this repo before landing this line (docs/operator-quickstart.md S5).
+{:deps {:aliases [:cljs]}
+ :builds
+ {:credits-worker
+  {:target :esm
+   :output-dir "dist/credits"
+   :modules {:worker {:exports {default credits.mcp-worker/handler}}}
+   ;; NOTE the key lives under :compiler-options, NOT :build-options -- shadow
+   ;; reads `[:compiler-options :warnings-as-errors]`
+   ;; (shadow/build/compiler.clj `should-warning-throw?`). Putting it under
+   ;; :build-options is silently ignored, which is the same failure this option
+   ;; exists to prevent: a fix that cannot fail. scripts/verify-docs-claims.cljs
+   ;; therefore parses this file as EDN and reads the key by path -- grepping
+   ;; for the string would be satisfied by this very comment.
+   :compiler-options {:output-feature-set :es2020
+                      :infer-externs :auto
+                      :warnings-as-errors true}}
+
+  :wallet-worker
+  {:target :esm
+   :output-dir "dist/wallet"
+   :modules {:worker {:exports {default credits.wallet-worker/handler}}}
+   :compiler-options {:output-feature-set :es2020
+                      :infer-externs :auto
+                      :warnings-as-errors true}}}}
