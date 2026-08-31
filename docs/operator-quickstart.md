@@ -22,7 +22,7 @@ git ls-files | awk -F/ 'NF>1{print $1"/"} NF==1{print $1}' | sort | uniq -c | so
 | Path | Files | What it is |
 |---|---:|---|
 | `evm/` | 45 | 1 own contract (`contracts/GCCStablecoin.sol`) + Circle's USDC vendored verbatim + 1 runbook |
-| top level | 12 | `README.md`, `CLAUDE.md`, `TOKEN_DESIGN_ETHEREUM.md`, `deps.edn`, `shadow-cljs.edn`, … |
+| top level | 12 | `README.md`, `CLAUDE.md`, `TOKEN_DESIGN_BASE.md`, `deps.edn`, `shadow-cljs.edn`, … |
 | `kotoba/` | 7 | a standalone TypeScript credits library — 594 lines + 153 of test (§4) |
 | `appview/` | 6 | two Worker configs + descriptors + READMEs (§3) |
 | `src/` | 5 | **the two Workers in ClojureScript** |

@@ -171,13 +171,15 @@ Browser session end → RewardFromCompute
 | `purchase_settlement` | tx_id | gross_amount, fee_amount, net_credits |
 | `public_fund_allocation` | allocation_id | spend_tx_id, public_fund_amount, destination_id |
 
-## GCC Token (Ethereum)
+## GCC Token (Ethereum mainnet, live)
 
 | Item | Address |
 |---|---|
 | GCC Token | `0x799d24a6FFBb758C6E2Ed8f981822A17Eaa5F30B` |
 | GCC Minter | `0xAf80b152eD85067F8386416767b9658E86C253d9` |
 | Safe Treasury | `0xA00366234D29d4F882088048c0B2fa0dB7302D4E` |
-| Chainlink ETH/USD | `0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419` |
+| Chainlink ETH/USD | `0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419` (mainnet only — no code at this address on Base) |
 
-Design: `TOKEN_DESIGN_ETHEREUM.md`
+Design: `TOKEN_DESIGN_BASE.md` (BOT / KUMO / YATA on Base — ADR-2608311800).
+GCC above is a live, non-upgradeable Circle FiatToken V2 on Ethereum mainnet;
+it is not the Base design's token and is not deployed on Base.
