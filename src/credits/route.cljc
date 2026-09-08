@@ -16,7 +16,7 @@
   deploy される面に server route が 1 本も無く、もう片方(wallet)は XRPC の
   中継を持つ。だから route 表は app ごとの値で、`dispatch` はその値を受け取る
   —— どちらか一方を暗黙の既定にすると、もう一方が黙って間違う。"
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 ;; ---------------------------------------------------------------------------
 ;; Route tables. The landing page renders THESE, so a route that exists and a
@@ -84,7 +84,7 @@
   XRPC を持たない app に `/xrpc/...` が来たら `:not-found` —— 中継先を持たない
   のに 400 や 405 を返すと『あるがいまは使えない』に読めてしまう。"
   [{:app/keys [xrpc?]} method path]
-  (let [m (keyword (str/lower-case (or method "get")))
+  (let [m (keyword (str/lower (or method "get")))
         p (or path "")]
     (cond
       (str/starts-with? p "/xrpc/")
@@ -142,8 +142,8 @@
   (into {"content-type" "application/json"
          "x-etzhayyim-bff" "cljs-worker"
          "x-etzhayyim-xrpc-method" nsid}
-        (comp (remove (fn [[k _]] (contains? drop-headers (str/lower-case k))))
-              (map (fn [[k v]] [(str/lower-case k) v])))
+        (comp (remove (fn [[k _]] (contains? drop-headers (str/lower k))))
+              (map (fn [[k v]] [(str/lower k) v])))
         in))
 
 (defn unwrap-mcp

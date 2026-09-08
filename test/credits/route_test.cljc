@@ -1,6 +1,6 @@
 (ns credits.route-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [credits.route :as route]
             [credits.view :as view]))
 
