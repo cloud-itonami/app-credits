@@ -20,7 +20,7 @@
 
 (require '["node:fs" :as fs]
          '["node:child_process" :as cp]
-         '[clojure.string :as str]
+         '[kotoba.lang.text :as str]
          '[cljs.reader :as reader])
 
 (def root (or (first (remove #(str/starts-with? % "--") *command-line-args*)) "."))

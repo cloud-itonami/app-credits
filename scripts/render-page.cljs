@@ -11,7 +11,7 @@
 ;; Exit:   0 書けた · 2 bundle が無い/呼べない
 
 (require '["node:fs" :as fs] '["node:path" :as path] '["node:url" :as url]
-         '[clojure.string :as str])
+         '[kotoba.lang.text :as str])
 
 (def args (vec (remove #(str/starts-with? % "--") *command-line-args*)))
 (def bundle (get args 0))
