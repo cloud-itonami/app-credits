@@ -29,7 +29,7 @@
 (def WALLET "appview/etzhayyim-wasm-wallet-wt1e2f3g")
 
 (def claims
-  {:tracked-files 81
+  {:tracked-files 82
    :appview-ts-files 0            ; both src/app.ts and every svelte/*.ts are gone
    :svelte-artifacts 0            ; no .svelte / svelte.config / svelte/ dir survives
    :production-cljs-files 6       ; src/credits/*.clj{s,c} + test/credits/*.cljc
