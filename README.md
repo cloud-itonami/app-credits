@@ -8,7 +8,7 @@ see §5. What changed is that the code you read is now the code that would be
 deployed, and that claim is checked rather than asserted.
 
 Everything on this page was measured on **2026-08-18** against commit `bb4f922`
-(before) and this branch (after). `nbb scripts/verify-docs-claims.cljs .`
+(before) and this branch (after). `kbb --backend sci scripts/verify-docs-claims.cljk .`
 re-derives every number here from the tree and exits 1 if the prose and the tree
 disagree.
 
@@ -109,11 +109,11 @@ their real output, including each gate shown failing.
 
 | Gate | Command | Result |
 |---|---|---|
-| tests | `nbb --classpath … -e '(run-tests …)'` | 8 tests, 39 assertions, 0 failures |
+| tests | `kbb --backend sci --classpath … -e '(run-tests …)'` | 8 tests, 39 assertions, 0 failures |
 | page quality | `design-quality.cli score … --min 95` | **100.00**, 12/12 axes with `--extra-axes` |
-| build | `resource-guard … shadow-cljs release credits-worker wallet-worker` | both bundles, 0 warnings, `:warnings-as-errors true` |
-| smoke | `nbb scripts/smoke-worker.cljs .` | 39 checks against the **built** bundles |
-| docs | `nbb scripts/verify-docs-claims.cljs .` | 31 claims re-derived from the tree |
+| build | `resource-guard … amu compile --target wasm32-browser credits-worker wallet-worker` | both bundles, 0 warnings, `:warnings-as-errors true` |
+| smoke | `kbb --backend sci scripts/smoke-worker.cljk .` | 39 checks against the **built** bundles |
+| docs | `kbb --backend sci scripts/verify-docs-claims.cljk .` | 31 claims re-derived from the tree |
 
 ## 4. What was deliberately left alone
 
