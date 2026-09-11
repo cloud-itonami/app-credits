@@ -1,4 +1,4 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; smoke-worker — 実際にビルドされた **両方の** bundle を import して叩く。
 ;;
 ;; ここが「deploy される成果物」に触る唯一の検査である。テスト
@@ -10,7 +10,7 @@
 ;; この repo は appview を 2 つ持つので bundle も 2 つある。**両方を叩く。**
 ;; 片方だけ見ると、もう片方が古い bundle のままでも緑になる。
 ;;
-;; Usage:  nbb scripts/smoke-worker.cljs [<root>]     (<root> FIRST, default ".")
+;; Usage:  kbb --backend sci scripts/smoke-worker.cljk [<root>]     (<root> FIRST, default ".")
 ;; Exit:   0 全て期待どおり · 1 期待と違う · 2 判定できなかった（bundle が無い等）
 
 (require '["node:fs" :as fs] '["node:path" :as path] '["node:url" :as url]

@@ -10,7 +10,7 @@
 ;; opens (appview/*/src/app.ts) was in no bundle at all.
 ;;
 ;; :warnings-as-errors is not decoration. shadow treats an undeclared or renamed
-;; var as a WARNING, so `shadow-cljs release` exits 0 while writing a bundle
+;; var as a WARNING, so `amu compile --target wasm32-browser` exits 0 while writing a bundle
 ;; that throws `Cannot read properties of undefined` on the first request.
 ;; "The build succeeded" is therefore not a check at all -- it cannot fail.
 ;; Demonstrated in this repo before landing this line (docs/operator-quickstart.md S5).

@@ -103,7 +103,7 @@ an error.
 ```bash
 for i in $(seq 1 60); do
   node /Users/junkawasaki/github/com-junkawasaki/scripts/resource-guard.mjs run build \
-    -- npx --yes shadow-cljs release credits-worker wallet-worker && break
+    -- npx --yes amu compile --target wasm32-browser credits-worker wallet-worker && break
   [ $? -eq 2 ] || break
   sleep 20
 done
@@ -131,24 +131,24 @@ G=~/.gitlibs/libs/io.github.kotoba-lang/jp-go-digital-design-system/2e2d191e9e17
 CP="src:test:$G/src:$G/resources:$K/html/src:$K/css/src"
 
 # 1. tests (pure decisions; no browser, no build, no network)
-npx --yes nbb --classpath "$CP" \
+npx --yes kbb --backend sci --classpath "$CP" \
   -e "(require '[cljs.test :refer [run-tests]] 'credits.route-test) (run-tests 'credits.route-test)"
 #   Ran 8 tests containing 39 assertions.
 #   0 failures, 0 errors.
 
 # 2. the page, scored — rendered FROM THE BUILT BUNDLE, not rebuilt separately
-npx --yes nbb scripts/render-page.cljs dist/wallet/worker.js /tmp/page.html wallet
-cd $K/design-quality && npx --yes nbb -m design-quality.cli score /tmp/page.html --min 95 --extra-axes
+npx --yes kbb --backend sci scripts/render-page.cljk dist/wallet/worker.js /tmp/page.html wallet
+cd $K/design-quality && npx --yes kbb --backend sci -m design-quality.cli score /tmp/page.html --min 95 --extra-axes
 #   100.00   aggregate: 100.00
 #   axes scored: 12 (…, input-zoom, contrast)
 #   gate: aggregate 100.00 >= min 95.00 -> PASS
 
 # 3. smoke — imports the BUILT bundles and exercises both
-npx --yes nbb scripts/smoke-worker.cljs .
+npx --yes kbb --backend sci scripts/smoke-worker.cljk .
 #   OK  both built bundles answer as their route tables say   (39 checks)
 
 # 4. docs — every number on this page and in README.md, re-derived
-npx --yes nbb scripts/verify-docs-claims.cljs .
+npx --yes kbb --backend sci scripts/verify-docs-claims.cljk .
 #   OK  every claim in README.md and docs/operator-quickstart.md holds  (31 claims)
 ```
 

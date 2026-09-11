@@ -1,4 +1,4 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; render-page — ビルド済み bundle の `GET /` を 1 枚の HTML に落とす。
 ;;
 ;; design-quality の採点(docs/operator-quickstart.md S6)に食わせるための出力で
@@ -6,7 +6,7 @@
 ;; のは deploy される bundle が実際に返す HTML でなければ意味が無いので、
 ;; ここは worker を呼ぶだけにしてある。
 ;;
-;; Usage:  nbb scripts/render-page.cljs <bundle.js> <out.html> [<app>]
+;; Usage:  kbb --backend sci scripts/render-page.cljk <bundle.js> <out.html> [<app>]
 ;;         <app> は "wallet"(既定) か "credits"。env の見本を切り替えるだけ。
 ;; Exit:   0 書けた · 2 bundle が無い/呼べない
 
@@ -19,7 +19,7 @@
 (def app (get args 2 "wallet"))
 
 (when (or (nil? bundle) (nil? out))
-  (println "UNDETERMINED\tusage: nbb scripts/render-page.cljs <bundle.js> <out.html> [wallet|credits]")
+  (println "UNDETERMINED\tusage: kbb --backend sci scripts/render-page.cljk <bundle.js> <out.html> [wallet|credits]")
   (js/process.exit 2))
 
 (def envs
