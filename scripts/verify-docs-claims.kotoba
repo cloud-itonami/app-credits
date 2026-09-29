@@ -170,12 +170,12 @@
                  (get-in edn [:builds :wallet-worker :modules :worker :exports 'default])])))
     (undet! "shadow-cljs.edn unreadable"))
 
-  ;; --- CLAUDE.md no longer describes a SvelteKit/TypeScript runtime ---------
-  (if-let [c (slurp* "CLAUDE.md")]
+  ;; --- AGENTS.md no longer describes a SvelteKit/TypeScript runtime ---------
+  (if-let [c (slurp* "AGENTS.md")]
     (check! :claude-md-describes-cljs true
             (and (not (str/includes? c "sveltekit-edge-bff"))
                  (str/includes? c "shadow-cljs")))
-    (undet! "CLAUDE.md unreadable"))
+    (undet! "AGENTS.md unreadable"))
 
   ;; --- the page renders the route TABLE rather than a baked count -----------
   ;; Asserted structurally (the view takes :routes and derives the count, the

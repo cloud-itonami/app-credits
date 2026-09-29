@@ -22,7 +22,7 @@ git ls-files | awk -F/ 'NF>1{print $1"/"} NF==1{print $1}' | sort | uniq -c | so
 | Path | Files | What it is |
 |---|---:|---|
 | `evm/` | 45 | 1 own contract (`contracts/GCCStablecoin.sol`) + Circle's USDC vendored verbatim + 1 runbook |
-| top level | 12 | `README.md`, `CLAUDE.md`, `TOKEN_DESIGN_BASE.md`, `deps.edn`, `shadow-cljs.edn`, … |
+| top level | 12 | `README.md`, `AGENTS.md`, `TOKEN_DESIGN_BASE.md`, `deps.edn`, `shadow-cljs.edn`, … |
 | `kotoba/` | 7 | a standalone TypeScript credits library — 594 lines + 153 of test (§4) |
 | `appview/` | 6 | two Worker configs + descriptors + READMEs (§3) |
 | `src/` | 5 | **the two Workers in ClojureScript** |
@@ -37,7 +37,7 @@ git ls-files | awk -F/ 'NF>1{print $1"/"} NF==1{print $1}' | sort | uniq -c | so
 
 The successor is **`orgs/cloud-itonami/credits`** — the ENGI mutual-credit
 kernel, whose README states it *"replaces the centrally issued GCC/credit
-model"*. `CLAUDE.md` here is the **legacy** design (30 % purchase fee, admin
+model"*. `AGENTS.md` here is the **legacy** design (30 % purchase fee, admin
 minter, Safe treasury), not the target one.
 
 ```bash

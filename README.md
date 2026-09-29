@@ -21,7 +21,7 @@ disagree.
 | Path | Files | What it is | In this migration? |
 |---|---:|---|---|
 | `evm/` | 45 | 1 own Solidity contract + Circle's USDC vendored verbatim | **no — see §4** |
-| top level | 12 | `README.md`, `CLAUDE.md`, `deps.edn`, `shadow-cljs.edn`, … | docs/build config |
+| top level | 12 | `README.md`, `AGENTS.md`, `deps.edn`, `shadow-cljs.edn`, … | docs/build config |
 | `kotoba/` | 7 | a standalone TypeScript credits library, 594 lines + 153 of test | **no — see §4** |
 | `appview/` | 6 | two Worker configs + descriptors + READMEs | yes (configs rewritten) |
 | `src/credits/` | 5 | the two Workers, in ClojureScript | **yes — this is the migration** |
@@ -156,4 +156,4 @@ returns **502**, not a 200 with an empty body.
 
 **New value flows go to `orgs/cloud-itonami/credits`** (the ENGI mutual-credit
 kernel), which states it "replaces the centrally issued GCC/credit model". This
-repository's `CLAUDE.md` describes the superseded design.
+repository's `AGENTS.md` describes the superseded design.
