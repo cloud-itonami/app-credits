@@ -1,7 +1,7 @@
 ;; app-credits — the two credits appviews.
 ;;
 ;; The Workers are ClojureScript, per the repo-wide runtime order in the
-;; superproject CLAUDE.md (kotoba wasm > clojurewasm > ClojureScript > nbb).
+;; superproject AGENTS.md (kotoba wasm > clojurewasm > ClojureScript > nbb).
 ;; TypeScript is not in that order at all, which is why neither of the two
 ;; TypeScript faces this repo used to carry was a candidate for "canonical"
 ;; (docs/adr/0001).

@@ -61,7 +61,7 @@
     dist/credits/worker.js        credits-mcp-component の main が指すもの
     dist/wallet/worker.js         wallet の main が指すもの
 
-TypeScript を正本にしない理由は superproject CLAUDE.md の runtime 順序
+TypeScript を正本にしない理由は superproject AGENTS.md の runtime 順序
 （kotoba wasm > clojurewasm > ClojureScript > nbb）で、TypeScript はそこに
 無い。入口を `.kotoba` ではなく cljs に置くのは ADR-2606290000 の判断で、
 kotoba の ingress capability が `:native-aot` / `:wasm-aot` とも pending だから
