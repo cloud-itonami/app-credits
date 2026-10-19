@@ -51,3 +51,31 @@ DEPRECATED は旧 GCC/30% fee モデルの話で、BOT/KUMO/YATA の膜規則は
 1. 2 段変換（BOT burn + credit）の状態機械を guest に追加。
 2. decision の `ito` 記録（署名 source chain への append 仕様）。
 3. aiueos app catalog への載せ（kotoba-lang/aiueos 側）。
+
+### 追記: L4 接続面の第 1 スライス — SIWE ログイン判定 guest（2026-10-19、JUN-126）
+
+人間認証ポリシー（ADR-2609070400 / human-authentication-policy.edn）の
+wallet 規則を、contract モデル（ADR 0009）どおり pure guest にした。
+
+| 層 | 実体 | 状態 |
+|---|---|---|
+| 判定コア guest | `aiueos/credits_siwe.cljk` — SIWE（EIP-4361）判定（エラービット 7 種: domain 厳密結合 / 復元 address 一致 / admitted chain（8453 = Base）/ single-use nonce（atomic）/ expiry 必須 / version・scheme / 承認方式（erc191/erc1271/passkey））。全 fail closed | **実装済み・実測** |
+| did:pkh 結合判定 | `pkh-binding`（address 一致・chain・method が揃うときだけ 1） | **実装済み・実測** |
+| 記述子 | `aiueos/credits-siwe.edn`（bundle 2 本目） | **実装済み** |
+| appview adapter | `credits/siwe.cljk` + parity fixture | **実装済み・実測** |
+
+実測: `amu test aiueos/credits_siwe.cljk` → **30/30**（jvm-kir / js / wasm）。
+kbb parity → 7 tests / 32 assertions / 0 failures（membrane と合算）。
+
+分業: 署名復元（secp256k1 / ERC-1271）と nonce の atomic 消費は **host が計算**
+し、結合の判定だけを guest が行う（facts v1 と同じ）。guest はスカラーのみ
+= KIR v3 / i64/direct ABI（kernel / selfhost 両対応）。
+
+### 未実装境界（L4 の残り）
+
+- **browser 側の接続 UI**（EIP-1193 / WalletConnect + SIWE 署名の実際の取得）。
+  appview の仕事で、共有アーキテクチャ契約どおり人の環境で動く。
+- **did:pkh の発行・検証経路**（Kotoba ID root 署名で束ねる。auth.kotoba.cloud は
+  発行者ではない）。
+- **nonce store の atomic 消費**（host 側の永続。D1/DO/KV 禁止に従う）。
+- passkey（WebAuthn）経路の同等判定（本スライスは wallet 系のみ）。

@@ -1,0 +1,17 @@
+;; app-credits — SIWE ログイン判定 bundle（itonami dapp、notes.edn 形）。
+;; 人間認証ポリシーの wallet 規則判定。署名復元は host、結合判定は guest。
+;; 実行 host はスカラーのみ = KIR v3 / i64/direct ABI（kernel/selfhost 両対応）。
+;; browser 側の接続 UI（EIP-1193 / WalletConnect）は未実装（docs の境界を参照）。
+{:aiueos/component :app/credits-siwe
+ :aiueos/kind :app
+ :aiueos/trust :untrusted
+ :aiueos/source "credits_siwe.cljk"
+ :aiueos/wasm "credits_siwe.wasm"
+ :aiueos/entry "main"
+ :aiueos/args []
+ :aiueos/imports #{}
+ :aiueos/exports #{:app/main
+                   :app/siwe-judgment
+                   :app/pkh-binding}
+ :aiueos/effects #{}
+ :aiueos/limits {:memory-pages 16 :fuel 5000000}}
