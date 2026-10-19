@@ -1,0 +1,14 @@
+(ns run-tests
+  "kbb 実行のテスト runner。
+  guest 側ゲートは amu test（aiueos/credits_membrane.cljk、3 ターゲット）。
+  ここでは appview adapter の parity fixture を回す。
+
+  既存の credits.route-test はこの runner の対象外 —— route は
+  `kotoba.lang.text` を require し、kbb の classpath にその lib の配線が
+  要る（このスライスの範囲外として記録。docs/credits-aiueos-dapp.md）。"
+  (:require [clojure.test :refer [run-tests]]
+            [credits.membrane-test]))
+
+(let [{:keys [fail error]} (run-tests 'credits.membrane-test)]
+  (when (pos? (+ fail error))
+    (set! (.-exitCode js/process) 1)))
