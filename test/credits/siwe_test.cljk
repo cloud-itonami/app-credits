@@ -1,0 +1,26 @@
+(ns credits.siwe-test
+  "siwe の parity fixture。数値は aiueos/credits_siwe.cljk の test-* と一致。"
+  (:require [clojure.test :refer [deftest is testing]]
+            [credits.siwe :as s]))
+
+(def ok {:domain-ok true :addr-ok true :chain-ok true :nonce-ok true
+         :exp-ok true :version-ok true :method-ok true})
+
+(deftest siwe-judgment-parity
+  (testing "guest の test-valid / test-fail-closed と同じ"
+    (is (= 0 (s/siwe-judgment ok)))
+    (is (= 127 (s/siwe-judgment {}))))
+  (testing "guest の個別ビット（domain/address/chain/nonce/expiry/version/method）と同じ"
+    (is (= 1 (s/siwe-judgment (assoc ok :domain-ok false))))
+    (is (= 2 (s/siwe-judgment (assoc ok :addr-ok false))))
+    (is (= 4 (s/siwe-judgment (assoc ok :chain-ok false))))
+    (is (= 8 (s/siwe-judgment (assoc ok :nonce-ok false))))
+    (is (= 16 (s/siwe-judgment (assoc ok :exp-ok false))))
+    (is (= 32 (s/siwe-judgment (assoc ok :version-ok false))))
+    (is (= 64 (s/siwe-judgment (assoc ok :method-ok false))))))
+
+(deftest pkh-binding-parity
+  (testing "guest の test-pkh と同じ"
+    (is (= 1 (s/pkh-binding {:addr-ok true :chain-ok true :method-ok true})))
+    (is (= 0 (s/pkh-binding {:addr-ok true :chain-ok true :method-ok false})))
+    (is (= 0 (s/pkh-binding {:addr-ok false :chain-ok true :method-ok true})))))
