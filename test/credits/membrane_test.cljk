@@ -1,0 +1,40 @@
+(ns credits.membrane-test
+  "membrane の parity fixture。期待値は aiueos/credits_membrane.cljk の
+  test-* と一致させている（guest 側が 3 ターゲットで同じ期待を通す）。"
+  (:require [clojure.test :refer [deftest is testing]]
+            [credits.membrane :as m]))
+
+(deftest exchange-bot-external
+  (testing "guest の test-ext-bot-exchange と同じ（1+1=2）"
+    (is (= 1 (m/membrane-judgment :external :bot)))
+    (is (= 1 (m/membrane-judgment :bot :external)))))
+
+(deftest one-way-mint-into-labour
+  (testing "guest の test-mint-into-labour / test-bot-to-labour と同じ（各 2）"
+    (is (= 2 (m/membrane-judgment :external :kumo)))
+    (is (= 2 (m/membrane-judgment :external :yata)))
+    (is (= 2 (m/membrane-judgment :bot :kumo)))
+    (is (= 2 (m/membrane-judgment :bot :yata)))))
+
+(deftest labour-side-refusals
+  (testing "guest の test-labour-out-refused / test-kumo-yata-forbidden と同じ（全て 0）"
+    (is (= 0 (m/membrane-judgment :kumo :external)))
+    (is (= 0 (m/membrane-judgment :yata :external)))
+    (is (= 0 (m/membrane-judgment :kumo :bot)))
+    (is (= 0 (m/membrane-judgment :yata :bot)))
+    (is (= 0 (m/membrane-judgment :kumo :yata)))
+    (is (= 0 (m/membrane-judgment :yata :kumo)))))
+
+(deftest fail-closed
+  (testing "guest の test-self-refused / test-unknown-refused と同じ（全て 0）"
+    (is (= 0 (m/membrane-judgment :bot :bot)))
+    (is (= 0 (m/membrane-judgment :external :external)))
+    (is (= 0 (m/membrane-judgment :unknown :bot)))
+    (is (= 0 (m/membrane-judgment :bot :unknown)))))
+
+(deftest x402-burn-parity
+  (testing "guest の test-x402-burn と同じ（BOT のみ 1）"
+    (is (= 1 (m/x402-burn-due :bot)))
+    (is (= 0 (m/x402-burn-due :external)))
+    (is (= 0 (m/x402-burn-due :kumo)))
+    (is (= 0 (m/x402-burn-due :yata)))))

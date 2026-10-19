@@ -1,0 +1,94 @@
+(ns credits.membrane
+  "app-credits 膜通過判定コア — aiueos guest（pure, :effects #{}）。
+
+  3 単位の型と膜規則（TOKEN_DESIGN_BASE.md、正本 ADR-2608291009 / ADR-2608311800）
+  の判定だけを持つ。実際の mint / burn / credit はこの guest の外。
+  すべて i64 スカラー（aiueos 境界規約: host が flat に積み、kotoba が判定）。
+
+  単位コード:
+    0 = external（fiat / USDC）
+    1 = BOT  （準圏。外部市場・唯一の投機面）
+    2 = KUMO （労圏・演算。償還不可）
+    3 = YATA （労圏・保管。償還不可）
+
+  membrane-judgment の戻り（0 = 拒否。fail closed）:
+    0 :refused        ここに無い流れは実装しない（膜規則）
+    1 :exchange       可・交換（BOT ↔ external の外部市場）
+    2 :one-way-mint   可・一方向（external→KUMO/YATA、BOT→KUMO/YATA。
+                      2 段実装: BOT burn と台帳 credit）
+
+  規則（TOKEN_DESIGN_BASE「膜の通過規則」）:
+    external → KUMO/YATA  : 2（一方向 mint）   KUMO/YATA → external : 0
+    BOT      → KUMO/YATA  : 2（一方向）        KUMO/YATA → BOT      : 0
+    BOT ↔ external        : 1                  KUMO ↔ YATA          : 0
+
+  x402-burn-due: x402 を BOT で払って受領した分は burn（sink (a)）。
+  未知の単位コードはすべて拒否（fail closed）。
+
+  テストは export されたゼロ引数 test-*（戻り 1/0。true 返しは通らない）:
+  <amu> test aiueos/credits_membrane.cljk"
+  (:export [main membrane-judgment x402-burn-due
+            test-ext-bot-exchange test-mint-into-labour test-bot-to-labour
+            test-labour-out-refused test-kumo-yata-forbidden
+            test-self-refused test-unknown-refused test-x402-burn]))
+
+(defn main [] :i64
+  0)
+
+(defn- known-unit [u :i64] :i64
+  (if (and (>= u 0) (<= u 3)) 1 0))
+
+(defn membrane-judgment [from :i64 to :i64] :i64
+  (if (= (known-unit from) 0)
+    0
+    (if (= (known-unit to) 0)
+      0
+      (if (= from to)
+        0
+        (if (and (= from 1) (= to 0))
+          1
+          (if (and (= from 0) (= to 1))
+            1
+            (if (<= to 1)
+              0
+              (if (<= from 1)
+                2
+                0))))))))
+
+(defn x402-burn-due [unit :i64] :i64
+  (if (= unit 1) 1 0))
+
+;; --- tests（戻り 1 = pass） ----------------------------------------------
+
+(defn test-ext-bot-exchange [] :i64
+  (if (= (+ (membrane-judgment 0 1) (membrane-judgment 1 0)) 2) 1 0))
+
+(defn test-mint-into-labour [] :i64
+  (if (= (+ (membrane-judgment 0 2) (membrane-judgment 0 3)) 4) 1 0))
+
+(defn test-bot-to-labour [] :i64
+  (if (= (+ (membrane-judgment 1 2) (membrane-judgment 1 3)) 4) 1 0))
+
+(defn test-labour-out-refused [] :i64
+  (if (= (+ (membrane-judgment 2 0) (membrane-judgment 3 0)
+            (membrane-judgment 2 1) (membrane-judgment 3 1))
+         0)
+    1 0))
+
+(defn test-kumo-yata-forbidden [] :i64
+  (if (= (+ (membrane-judgment 2 3) (membrane-judgment 3 2)) 0) 1 0))
+
+(defn test-self-refused [] :i64
+  (if (= (+ (membrane-judgment 0 0) (membrane-judgment 1 1)
+            (membrane-judgment 2 2) (membrane-judgment 3 3))
+         0)
+    1 0))
+
+(defn test-unknown-refused [] :i64
+  (if (= (+ (membrane-judgment 9 1) (membrane-judgment 1 9)) 0) 1 0))
+
+(defn test-x402-burn [] :i64
+  (if (= (+ (x402-burn-due 1) (x402-burn-due 0)
+            (x402-burn-due 2) (x402-burn-due 3))
+         1)
+    1 0))

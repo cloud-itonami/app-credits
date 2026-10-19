@@ -1,0 +1,20 @@
+;; app-credits — itonami（dapp）の aiueos アプリ記述子
+;; （形は kotoba-lang/aiueos/examples/apps/notes.edn 準拠）。
+;; 実装の正本: credits_membrane.cljk / docs/credits-aiueos-dapp.md。
+;;
+;; 判断コア guest（:effects #{}）は 3 単位の膜通過規則（TOKEN_DESIGN_BASE、
+;; ADR-2608291009 / ADR-2608311800）。mint / burn / credit はこの外の層。
+;; aiueos session/grant への配線は未実装（docs の未実装境界を参照）。
+{:aiueos/component :app/credits
+ :aiueos/kind :app
+ :aiueos/trust :untrusted
+ :aiueos/source "credits_membrane.cljk"
+ :aiueos/wasm "credits_membrane.wasm"
+ :aiueos/entry "main"
+ :aiueos/args []
+ :aiueos/imports #{}
+ :aiueos/exports #{:app/main
+                   :app/membrane-judgment
+                   :app/x402-burn-due}
+ :aiueos/effects #{}
+ :aiueos/limits {:memory-pages 16 :fuel 5000000}}

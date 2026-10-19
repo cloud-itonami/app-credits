@@ -1,0 +1,39 @@
+(ns credits.membrane
+  "3 単位の膜通過規則（appview 側 adapter）。
+
+  セマンティクスの正本は aiueos/credits_membrane.cljk（aiueos guest。
+  `amu test` が jvm-kir / js / wasm の 3 ターゲットで同じ fixture を実行する）。
+  この namespace は map/keyword API の adapter で、期待値は guest の test-* と
+  一致させている（parity fixture）。判定は pure、副作用なし。
+
+  単位: :external（fiat/USDC）:bot（準圏）:kumo（労圏・演算）:yata（労圏・保管）。
+  規則の正本は TOKEN_DESIGN_BASE.md「膜の通過規則」（ADR-2608291009 / 2608311800）。
+  ここに無い流れは実装しない。
+
+  membrane-judgment の戻り（0 = 拒否。fail closed）:
+    0 :refused / 1 :exchange（BOT ↔ external）/ 2 :one-way-mint（external・BOT → KUMO/YATA）")
+
+(def unit-codes
+  {:external 0
+   :bot 1
+   :kumo 2
+   :yata 3})
+
+(defn membrane-judgment
+  "from → to の膜通過を判定。戻りは 0（拒否）/ 1（交換）/ 2（一方向 mint）。"
+  [from to]
+  (let [f (get unit-codes from -1)
+        t (get unit-codes to -1)]
+    (cond
+      (or (= f -1) (= t -1)) 0
+      (= f t) 0
+      (and (= f 1) (= t 0)) 1
+      (and (= f 0) (= t 1)) 1
+      (<= t 1) 0
+      (<= f 1) 2
+      :else 0)))
+
+(defn x402-burn-due
+  "x402 の BOT 払いで受領した分は burn（sink (a)）。BOT なら 1、他は 0。"
+  [unit]
+  (if (= unit :bot) 1 0))
